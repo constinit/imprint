@@ -223,7 +223,7 @@ def test_fast_inla(method, N=10, iterations=1):
             1.41605356e-06,
         ]
     )
-    np.testing.assert_allclose(logistic(sigma2_post[0]), logistic(correct), atol=1e-3)
+    np.testing.assert_allclose(sigma2_post[0], correct, rtol=1e-3)
     np.testing.assert_allclose(
         exceedances[0], [0.28306264, 0.4077219, 0.99714174, 0.99904684], atol=1e-3
     )
@@ -241,10 +241,12 @@ def test_fast_inla_same_results(N=1, iterations=1000):
         for method in methods:
             outs[method] = inla_model.inference(y_i, n_i, method=method)
         for method1, method2 in itertools.combinations(methods, 2):
-            j = 1
-            out1 = outs[method1][j][0]
-            out2 = outs[method2][j][0]
-            np.testing.assert_allclose(out1, out2, atol=1e-2)
+            # sigma2_post, exceedances, theta_max, theta_sigma
+            outs1 = outs[method1]
+            outs2 = outs[method2]
+            np.testing.assert_allclose(outs1[0], outs2[0], rtol=1e-3)
+            np.testing.assert_allclose(outs1[1], outs2[1], atol=1e-2)
+            np.testing.assert_allclose(logistic(outs1[2]), logistic(outs2[2]), atol=2e-3)
 
 
 def test_py_binomial(n_arms=2, n_theta_1d=16, sim_size=100):

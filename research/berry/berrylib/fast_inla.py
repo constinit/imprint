@@ -65,10 +65,10 @@ class FastINLA:
             jax.vmap(
                 jax.vmap(
                     jax_opt,
-                    in_axes=(None, None, 0, 0, 0, None, None, None),
+                    in_axes=(None, None, 0, 0, 0, 0, None, None, None),
                     out_axes=(0, 0, 0, 0),
                 ),
-                in_axes=(0, 0, None, None, None, None, None, None),
+                in_axes=(0, 0, None, None, None, None, None, None, None),
                 out_axes=(0, 0, 0, 0),
             )
         )
@@ -249,6 +249,7 @@ class FastINLA:
         num_iters, theta_max, hess_diag, hess_shift = self.jax_opt_vec(
             y,
             n,
+            self.sigma2_pts_jax,
             self.neg_precQ_jax,
             self.precQ_eig_vals_jax,
             self.precQ_eig_vecs_jax,
@@ -310,6 +311,7 @@ class FastINLA:
 def jax_opt(
     y,
     n,
+    sigma2,
     neg_precQ,
     prec_eig_vals,
     prec_eig_vecs,
@@ -331,6 +333,12 @@ def jax_opt(
 
         # Using the eigendecomposition improves numerical stability
         grad = -U @ jnp.dot(theta_max - mu_0, U) + y - nCeta
+        # grad = (
+        #     jax_faster_inv_product(-jnp.repeat(sigma2, len(y)), -mu_0, theta_max - mu_0)
+        #     + y
+        #     - nCeta
+        # )
+        # print('grad', grad, grad2)
         diag = prec_d - nCeta * C
         step = -jax_faster_inv_product(diag, shift, grad)
         step = jnp.nan_to_num(step)
@@ -356,7 +364,7 @@ def jax_opt(
         )
     else:
         args = init_args
-        step = jax.jit(step)
+        # step = jax.jit(step)
         for i in range(max_iter):
             args = step(args)
             out = args
