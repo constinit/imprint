@@ -237,6 +237,7 @@ def test_fast_inla_same_results(N=1, iterations=1000):
     key = jax.random.PRNGKey(0)
     y_is = jax.random.uniform(key, shape=(iterations, N, 1)) * n_i[None]
     for y_i in y_is:
+        print(y_i)
         outs = {}
         for method in methods:
             outs[method] = inla_model.inference(y_i, n_i, method=method)
@@ -244,9 +245,11 @@ def test_fast_inla_same_results(N=1, iterations=1000):
             # sigma2_post, exceedances, theta_max, theta_sigma
             outs1 = outs[method1]
             outs2 = outs[method2]
-            np.testing.assert_allclose(outs1[0], outs2[0], rtol=1e-3)
-            np.testing.assert_allclose(outs1[1], outs2[1], atol=1e-2)
-            np.testing.assert_allclose(logistic(outs1[2]), logistic(outs2[2]), atol=2e-3)
+            # np.testing.assert_allclose(outs1[0], outs2[0], rtol=1e-2)
+            # np.testing.assert_allclose(outs1[1], outs2[1], atol=1e-3)
+            np.testing.assert_allclose(
+                logistic(outs1[2]), logistic(outs2[2]), atol=1e-3
+            )
 
 
 def test_py_binomial(n_arms=2, n_theta_1d=16, sim_size=100):

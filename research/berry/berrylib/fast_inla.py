@@ -323,7 +323,6 @@ def jax_opt(
 ):
     shift = neg_precQ[..., 0, 1]
     prec_d = jnp.diag(neg_precQ) - shift
-    U = prec_eig_vecs * jnp.sqrt(prec_eig_vals)
 
     def step(args):
         i, theta_max, hess_diag, hess_shift, go = args
@@ -332,12 +331,12 @@ def jax_opt(
         nCeta = n * C * exp_theta_adj
 
         # Using the eigendecomposition improves numerical stability
-        grad = -U @ jnp.dot(theta_max - mu_0, U) + y - nCeta
-        # grad = (
-        #     jax_faster_inv_product(-jnp.repeat(sigma2, len(y)), -mu_0, theta_max - mu_0)
-        #     + y
-        #     - nCeta
-        # )
+        # grad = -U @ jnp.dot(theta_max - mu_0, U) + y - nCeta
+        grad = (
+            jax_faster_inv_product(-jnp.repeat(sigma2, len(y)), -mu_0, theta_max - mu_0)
+            + y
+            - nCeta
+        )
         # print('grad', grad, grad2)
         diag = prec_d - nCeta * C
         step = -jax_faster_inv_product(diag, shift, grad)
@@ -406,9 +405,9 @@ def jax_faster_inv_product(D, S, G):
     This function uses "Sherman-Morrison" formula:
     https://en.wikipedia.org/wiki/Sherman–Morrison_formula
     """
-    D_inverse = 1.0 / D
-    multiplier = -S / (1 + (S / D).sum())
-    return multiplier * D_inverse * jnp.dot(D_inverse, G) + D_inverse * G
+    D_norm = jnp.abs(D).sum()
+    D_normed = D / D_norm
+    return (-S * (G / D_normed).sum() / (D_norm + (S / D_normed).sum()) + G) / D
 
 
 def jax_faster_log_det(D, S):
