@@ -323,6 +323,7 @@ def jax_opt(
 ):
     shift = neg_precQ[..., 0, 1]
     prec_d = jnp.diag(neg_precQ) - shift
+    # U = prec_eig_vecs * jnp.sqrt(prec_eig_vals)
 
     def step(args):
         i, theta_max, hess_diag, hess_shift, go = args
@@ -332,6 +333,7 @@ def jax_opt(
 
         # Using the eigendecomposition improves numerical stability
         # grad = -U @ jnp.dot(theta_max - mu_0, U) + y - nCeta
+        grad = neg_precQ @ (theta_max - mu_0) + y - nCeta
         grad = (
             jax_faster_inv_product(-jnp.repeat(sigma2, len(y)), -mu_0, theta_max - mu_0)
             + y
@@ -340,6 +342,7 @@ def jax_opt(
         # print('grad', grad, grad2)
         diag = prec_d - nCeta * C
         step = -jax_faster_inv_product(diag, shift, grad)
+
         step = jnp.nan_to_num(step)
         go = jnp.square(step).sum() > tol * tol
         return i + 1, theta_max + step, diag, shift, go
@@ -371,6 +374,13 @@ def jax_opt(
                 break
     i, theta_max, hess_diag, hess_shift, go = out
     return i, theta_max, hess_diag, hess_shift
+
+
+def jax_fast_inv(S, d):
+    for k in range(d.shape[0]):
+        offset = d[k] / (1 + d[k] * S[k, k])
+        S = S - (offset * (S[k, None, :] * S[:, None, k]))
+    return S
 
 
 def jax_faster_inv(D, S):

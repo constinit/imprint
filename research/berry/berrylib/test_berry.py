@@ -229,7 +229,7 @@ def test_fast_inla(method, N=10, iterations=1):
     )
 
 
-def test_fast_inla_same_results(N=1, iterations=1000):
+def test_fast_inla_same_results(N=1, iterations=10_000):
     """Ensure the optimized jax output matches the numpy output."""
     n_i = np.tile(np.array([20, 20, 35, 35]), (N, 1))
     inla_model = fast_inla.FastINLA()
@@ -245,8 +245,8 @@ def test_fast_inla_same_results(N=1, iterations=1000):
             # sigma2_post, exceedances, theta_max, theta_sigma
             outs1 = outs[method1]
             outs2 = outs[method2]
-            # np.testing.assert_allclose(outs1[0], outs2[0], rtol=1e-2)
-            # np.testing.assert_allclose(outs1[1], outs2[1], atol=1e-3)
+            np.testing.assert_allclose(outs1[0], outs2[0], atol=1e-3, rtol=1e-2)
+            np.testing.assert_allclose(outs1[1], outs2[1], atol=1e-3)
             np.testing.assert_allclose(
                 logistic(outs1[2]), logistic(outs2[2]), atol=1e-3
             )
