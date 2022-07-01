@@ -347,7 +347,7 @@ class FastINLA:
 
 def jax_opt(y, n, cov, neg_precQ, sigma2, logit_p1, mu_0, tol):
     def step(args):
-        theta_max, hess_inv, stop = args
+        i, theta_max, hess_inv, stop = args
         theta_m0 = theta_max - mu_0
         exp_theta_adj = jnp.exp(theta_max + logit_p1)
         C = 1.0 / (exp_theta_adj + 1)
@@ -359,7 +359,7 @@ def jax_opt(y, n, cov, neg_precQ, sigma2, logit_p1, mu_0, tol):
         hess_inv = jax_fast_invert(-cov, -diag)
         step = -hess_inv.dot(grad)
         go = jnp.sum(step**2) > tol**2
-        return theta_max + step, hess_inv, go
+        return i + 1, theta_max + step, hess_inv, go
 
     # NOTE: Warm starting was not helpful but I left this code here in case it's
     # useful.
@@ -371,12 +371,21 @@ def jax_opt(y, n, cov, neg_precQ, sigma2, logit_p1, mu_0, tol):
     #     jax.scipy.special.logit((y + 1e-4) / n) - logit_p1
     # )
     n_arms = y.shape[0]
-    theta_max0 = jnp.zeros(n_arms)
+    dtype = jnp.float32 if y.dtype == jnp.float32 else jnp.float64
+    cd = jnp.diag(cov)
+    cov -= jnp.diag(cd)
+    m = 1.0
+    cd = jnp.maximum(cd, m)
+    cov += jnp.diag(cd)
+    neg_precQ = -jnp.linalg.inv(cov.astype(jnp.float64)).astype(dtype)
+    theta_max0 = jnp.zeros(n_arms, dtype)
+    init_args = (0, theta_max0, jnp.zeros((n_arms, n_arms), dtype), True)
+    max_iters = 1000
 
     out = jax.lax.while_loop(
-        lambda args: args[2], step, (theta_max0, jnp.zeros((n_arms, n_arms)), True)
+        lambda args: args[0] < max_iters & args[-1], step, init_args
     )
-    theta_max, hess_inv, stop = out
+    i, theta_max, hess_inv, stop = out
     return theta_max, hess_inv
 
 

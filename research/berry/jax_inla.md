@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 
 from berrylib.constants import Y_I, Y_I2, N_I, N_I2
 from jax.config import config
-config.update("jax_enable_x64", False)
+# config.update("jax_enable_x64", False)
 
 
 ```
@@ -33,82 +33,54 @@ import numpy as np
 import berrylib.fast_inla
 import importlib
 from functools import partial
-
 importlib.reload(berrylib.fast_inla)
-from berrylib.fast_inla import FastINLA, jax_opt, jax_faster_inv_product
+from berrylib.fast_inla import FastINLA, jax_opt
 
-def jax_faster_inv_product(D, S, G):
-    """Compute (diag(D)+S)^-1 @ G.
+fi = berrylib.fast_inla.FastINLA(n_arms=4)
+# sigma2 = jnp.array(1e5)
+def get_y():
+    # y = jnp.zeros(4)
+    # y += np.abs(np.random.normal(0, .1, 4))
+    y = np.random.uniform(size=4) * n
+    return y
 
-    This function uses "Sherman-Morrison" formula:
-    https://en.wikipedia.org/wiki/Sherman–Morrison_formula
-    """
-    D_inverse = 1.0 / D
-    multiplier = -S / (1 + (S / D).sum())
-    # return D_inverse *(multiplier * jnp.dot(D_inverse, G) +  G)
-    D_norm = jnp.abs(D).sum()
-    D_normed = D / D_norm
-    return (-S * (G / D_normed).sum() / (D_norm + (S  / D_normed).sum()) + G) / D
+n = jnp.array([30, 30, 30, 30])
+# # fi.jax_inference(y, n)
 
-Ds = jnp.arange(3, -7, -1)
-S = 100
-G = jnp.arange(1, 5)
-for D in Ds:
-    D = 10.0**D
-    print('D', D)
-    D = jnp.repeat(D, 4)
-    D_inverse = 1.0 / D
-    multiplier = -S / (1 + (S / D).sum())
-    d_multiplier = -S / (D + S*len(D))
-    a, b = D_inverse *(multiplier * jnp.dot(D_inverse, G)), D_inverse * G
-    # print("inv", D_inverse)
-    # print(multiplier * D_inverse)
-    # print(d_multiplier)
-    print(jax_faster_inv_product(D, S, G))
-    # print(jax_faster_inv_product(D, S, G) * D)
-# assert jax.config.read("jax_enable_x64")
+def test_y(y):
+    j = 8
+    answers = []
+    dtypes = [jnp.float64, jnp.float32]
+    def cast(x, dtype):
+        if isinstance(x, float):
+            return jnp.array(x, dtype)
+        return x.astype(dtype)
+    for dtype in dtypes:
+        args = [
+            y,
+            n,
+            fi.cov_jax[j],
+            fi.sigma2_pts_jax[j],
+            fi.neg_precQ_jax[j],
+            # fi.precQ_eig_vals_jax[j],
+            # fi.precQ_eig_vecs_jax[j],
+            fi.logit_p1,
+            fi.mu_0,
+            fi.opt_tol,
+        ]
+        jax_opt_jit = jax.jit(jax_opt)
+        args = [cast(x, dtype) for x in args]
+        answers.append(jax_opt_jit(*args))
+        assert answers[-1][0].dtype == dtype, answers[-1][0]
+    np.testing.assert_allclose(answers[0][0], answers[1][0], atol=1e-4)
+    return answers
 
-# fi = FastINLA(n_arms=4)
-# # sigma2 = jnp.array(1e5)
-# y = jnp.array([0, 0, 30, 30])
-# n = jnp.array([30, 30, 30, 30])
-# # # fi.jax_inference(y, n)
-# j = -2
-# jax_opt(
-#     y,
-#     n,
-#     fi.sigma2_pts_jax[j],
-#     fi.neg_precQ_jax[j],
-#     fi.precQ_eig_vals_jax[j],
-#     fi.precQ_eig_vecs_jax[j],
-#     fi.logit_p1,
-#     fi.mu_0,
-#     fi.tol,
-#     fast_loop=False,
-# )
-
-```
-
-```python
-with open("/home/const/imprint/out.txt") as f:
-    arr = np.array(eval(f.read()))
-arr.shape
-np.linalg.slogdet(arr)
-
-```
-
-```python
-# with jit:
-x = np.array([2.3373992443084717, 2.337362289428711])
-y = np.array([2.3381409645080566, 2.338103771209717])
-
-def 
-
-# without jit:
-# [2.3373985290527344, 2.3373618125915527]
-print(np.linalg.norm(x - y))
-print(np.abs(x-y))
-
+for _ in range(10_000):
+    y = get_y()
+    # print(y)
+    answers = test_y(y)
+# print(answers[0][0])
+# print(answers[1][0])
 ```
 
 ```python
