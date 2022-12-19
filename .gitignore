@@ -1,0 +1,48 @@
+*.DS_Store
+.env
+
+# python stuff
+__pycache__/
+*.py[cod]
+*$py.class
+
+# notebook stuff
+.ipynb_checkpoints
+
+# profiler outputs
+*.lprof
+*.prof
+
+# python packaging outputs
+*.egg-info
+
+# c++ extensions built in place within the source tree.
+.rendered.*.cpp
+*.so 
+
+# poetry.toml should not be committed because it will vary between machines
+# (e.g. CI will want to use virtualenvs but locally we use conda)
+poetry.toml
+
+# various data
+*.pkl
+*.npy
+*.parquet
+*.db
+*.db.wal
+*.zip
+
+# anything else
+*.gitignore*
+!**/.gitignore
+
+# Codespaces
+oryx-build-commands.txt
+venv
+
+# Cloud and AWS stuff, CDK
+.terraform
+.terraform.*
+terraform.*
+.cdk.staging/
+cdk.out/
